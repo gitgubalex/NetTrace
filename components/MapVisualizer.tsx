@@ -53,9 +53,10 @@ interface MapVisualizerProps {
   whois?: WhoisData;
   highlightedHop?: TracerouteHop | null;
   userLocation?: { lat: number; lng: number };
+  isDarkMode?: boolean;
 }
 
-export const MapVisualizer: React.FC<MapVisualizerProps> = ({ hops, whois, highlightedHop, userLocation }) => {
+export const MapVisualizer: React.FC<MapVisualizerProps> = ({ hops, whois, highlightedHop, userLocation, isDarkMode = true }) => {
   const [center, setCenter] = useState<[number, number]>([20, 0]);
   const [zoom, setZoom] = useState(2);
 
@@ -90,7 +91,6 @@ export const MapVisualizer: React.FC<MapVisualizerProps> = ({ hops, whois, highl
   const originLng = userLocation ? userLocation.lng : -104.6532;
 
   // Calculate a continuous path where longitudes are adjusted to avoid world wrapping issues
-  // This ensures markers and lines always connect visually, even across the date line
   const visualPath = useMemo(() => {
     const start = { lat: originLat, lng: originLng };
     if (!hops || hops.length === 0) return { origin: start, hops: [] };
@@ -116,19 +116,25 @@ export const MapVisualizer: React.FC<MapVisualizerProps> = ({ hops, whois, highl
     return { origin: start, hops: processedHops };
   }, [hops, originLat, originLng]);
 
+  // Dynamic Tile Layer URL based on theme
+  const tileLayerUrl = isDarkMode 
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+  const mapBackground = isDarkMode ? '#0f172a' : '#e2e8f0';
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div className="w-full h-full relative z-0 transition-colors duration-300">
       <MapContainer 
         center={[originLat, originLng]} 
         zoom={4} 
         scrollWheelZoom={true} 
-        style={{ height: "100%", width: "100%", background: '#0f172a' }}
+        style={{ height: "100%", width: "100%", background: mapBackground }}
         worldCopyJump={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={tileLayerUrl}
         />
         
         <MapUpdater center={center} zoom={zoom} />
@@ -136,7 +142,7 @@ export const MapVisualizer: React.FC<MapVisualizerProps> = ({ hops, whois, highl
         {/* Origin Marker */}
         <Marker 
           position={[visualPath.origin.lat, visualPath.origin.lng]} 
-          icon={createColorIcon('#ffffff', true)}
+          icon={createColorIcon(isDarkMode ? '#ffffff' : '#475569', true)}
         >
           <Popup className="text-slate-900 font-sans">
             <div className="font-bold">{userLocation ? "My Location" : "Durango, Mexico"}</div>
